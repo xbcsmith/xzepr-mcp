@@ -387,17 +387,17 @@ pub fn detect_prompt_injection(text: &str) -> Option<String> {
             return Some(format!("Potential injection pattern detected: {}", pattern));
         }
     }
-    
+
     // Check for excessive repetition
     if has_excessive_repetition(&lower) {
         return Some("Excessive character repetition detected".to_string());
     }
-    
+
     // Check for control characters
     if has_control_characters(text) {
         return Some("Control characters detected".to_string());
     }
-    
+
     None
 }
 
@@ -406,12 +406,12 @@ pub fn sanitize_input(input: &str, max_length: usize) -> String {
     let cleaned: String = input.chars()
         .filter(|c| !c.is_control() || matches!(c, '\n' | '\r' | '\t'))
         .collect();
-    
+
     // Normalize whitespace
     let normalized = cleaned.split_whitespace()
         .collect::<Vec<_>>()
         .join(" ");
-    
+
     // Truncate to max length
     normalized.chars().take(max_length).collect()
 }
@@ -421,7 +421,7 @@ pub fn validate_json_depth(value: &serde_json::Value, max_depth: usize) -> Resul
         if current_depth > max_depth {
             return Err(ValidationError::JsonDepthExceeded { max: max_depth });
         }
-        
+
         match value {
             serde_json::Value::Object(map) => {
                 for v in map.values() {
@@ -435,10 +435,10 @@ pub fn validate_json_depth(value: &serde_json::Value, max_depth: usize) -> Resul
             }
             _ => {}
         }
-        
+
         Ok(())
     }
-    
+
     check_depth(value, 0, max_depth)
 }
 ```
@@ -582,19 +582,19 @@ pub fn validate_json_depth(value: &serde_json::Value, max_depth: usize) -> Resul
 pub enum McpError {
     #[error("XZepr API error: {0}")]
     XZeprApi(#[from] XZeprError),
-    
+
     #[error("Configuration error: {0}")]
     Config(String),
-    
+
     #[error("Validation error in field '{field}': {message}")]
     Validation { field: String, message: String },
-    
+
     #[error("Authentication error: {0}")]
     Auth(#[from] AuthError),
-    
+
     #[error("MCP protocol error: {0}")]
     Protocol(String),
-    
+
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 }
@@ -603,16 +603,16 @@ pub enum McpError {
 pub enum AuthError {
     #[error("Invalid token: {0}")]
     InvalidToken(String),
-    
+
     #[error("Token expired at {0}")]
     TokenExpired(String),
-    
+
     #[error("Wrong audience: expected {expected}, got {actual}")]
     WrongAudience { expected: String, actual: String },
-    
+
     #[error("Insufficient scope: {tool} requires {required}")]
     InsufficientScope { tool: String, required: String },
-    
+
     #[error("JWKS error: {0}")]
     JwksError(String),
 }
@@ -682,22 +682,22 @@ pub struct RateLimit {
 impl Default for RateLimitConfig {
     fn default() -> Self {
         let mut per_tool = HashMap::new();
-        
+
         // Fetch operations: 100 req/min
         per_tool.insert("fetch_event".to_string(), RateLimit { requests_per_minute: 100, burst_size: 10 });
         per_tool.insert("fetch_receiver".to_string(), RateLimit { requests_per_minute: 100, burst_size: 10 });
         per_tool.insert("fetch_group".to_string(), RateLimit { requests_per_minute: 100, burst_size: 10 });
-        
+
         // Search operations: 20 req/min (more expensive)
         per_tool.insert("search_events".to_string(), RateLimit { requests_per_minute: 20, burst_size: 5 });
         per_tool.insert("search_receivers".to_string(), RateLimit { requests_per_minute: 20, burst_size: 5 });
         per_tool.insert("search_groups".to_string(), RateLimit { requests_per_minute: 20, burst_size: 5 });
-        
+
         // Create operations: 10 req/min (write operations)
         per_tool.insert("create_event".to_string(), RateLimit { requests_per_minute: 10, burst_size: 3 });
         per_tool.insert("create_receiver".to_string(), RateLimit { requests_per_minute: 10, burst_size: 3 });
         per_tool.insert("create_group".to_string(), RateLimit { requests_per_minute: 10, burst_size: 3 });
-        
+
         Self {
             global: RateLimit { requests_per_minute: 600, burst_size: 20 }, // 10 req/s
             per_tool,
@@ -976,15 +976,15 @@ impl SecureSession {
             token_fingerprint,
         }
     }
-    
+
     pub fn is_expired(&self, timeout: Duration) -> bool {
         self.last_activity.elapsed() > timeout
     }
-    
+
     pub fn update_activity(&mut self) {
         self.last_activity = Instant::now();
     }
-    
+
     pub fn verify_user(&self, user_id: &str) -> bool {
         // Constant-time comparison
         self.user_id == user_id
@@ -1068,12 +1068,12 @@ pub fn get_required_scopes(tool: &str) -> &[&str] {
         "fetch_event" | "search_events" => &["xzepr:read"],
         "fetch_receiver" | "search_receivers" => &["xzepr:read"],
         "fetch_group" | "search_groups" => &["xzepr:read"],
-        
+
         // Write operations - require xzepr:write
         "create_event" => &["xzepr:write"],
         "create_receiver" => &["xzepr:write"],
         "create_group" => &["xzepr:write"],
-        
+
         _ => &[],
     }
 }
@@ -1157,13 +1157,13 @@ pub async fn handle_fetch_event(
 ) -> Result<Event, McpError> {
     let span = tracing::info_span!("fetch_event", request_id = %ctx.request_id);
     let _enter = span.enter();
-    
+
     // 1. Validate JWT scopes
     ctx.scopes.requires_any_scope(&["xzepr:read"])?;
-    
+
     // 2. Validate input
     input.validate()?;
-    
+
     // 3. Check injection patterns
     if let Some(pattern) = detect_prompt_injection(&input.id) {
         return Err(McpError::Validation {
@@ -1171,10 +1171,10 @@ pub async fn handle_fetch_event(
             message: pattern,
         });
     }
-    
+
     // 4. Call XZepr API
     let event = ctx.xzepr_client.fetch_event(&input.id).await?;
-    
+
     // 5. Log audit event
     audit_log::log_tool_invocation(
         "fetch_event",
@@ -1184,7 +1184,7 @@ pub async fn handle_fetch_event(
         "success",
         span.elapsed(),
     );
-    
+
     Ok(event)
 }
 ```

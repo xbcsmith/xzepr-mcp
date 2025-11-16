@@ -55,7 +55,7 @@
 pub mod config;
 pub mod error;
 
-// Module stubs - will be implemented in subsequent tasks
+// Implemented modules
 pub mod auth;
 pub mod client;
 pub mod mcp;

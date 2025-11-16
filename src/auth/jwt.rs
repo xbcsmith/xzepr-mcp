@@ -14,12 +14,12 @@
 //! - Unknown `kid` triggers JWKS refresh
 
 use crate::error::{AuthError, Result};
-use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
+use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use moka::future::Cache;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 /// JWT claims structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,6 +102,7 @@ struct Jwk {
     /// Key type
     kty: String,
     /// Algorithm
+    #[allow(dead_code)]
     alg: Option<String>,
     /// Modulus (RSA)
     n: Option<String>,
@@ -131,6 +132,7 @@ pub struct JwtValidator {
     http_client: reqwest::Client,
 
     /// JWKS cache TTL
+    #[allow(dead_code)]
     cache_ttl: Duration,
 
     /// Validation enabled flag
@@ -353,16 +355,16 @@ impl JwtValidator {
                 AuthError::JwksFetchFailed(format!("Failed to parse OIDC config: {}", e))
             })?;
 
-        let jwks_uri = oidc_config["jwks_uri"].as_str().ok_or_else(|| {
+        let jwks_endpoint = oidc_config["jwks_uri"].as_str().ok_or_else(|| {
             AuthError::JwksFetchFailed("Missing jwks_uri in OIDC config".to_string())
         })?;
 
-        debug!("Fetching JWKS from: {}", jwks_uri);
+        debug!("Fetching JWKS from: {}", jwks_endpoint);
 
         // Fetch JWKS
         let jwks: JwksResponse = self
             .http_client
-            .get(jwks_uri)
+            .get(jwks_endpoint)
             .send()
             .await
             .map_err(|e| AuthError::JwksFetchFailed(format!("Failed to fetch JWKS: {}", e)))?
@@ -450,6 +452,41 @@ impl JwtValidator {
         }
         Ok(())
     }
+
+    /// Check if JWKS cache has any keys
+    ///
+    /// # Returns
+    ///
+    /// Returns `true` if at least one key is cached
+    pub fn has_cached_jwks(&self) -> bool {
+        self.jwks_cache.entry_count() > 0
+    }
+
+    /// Fetch JWKS from provider (alias for refresh_jwks)
+    ///
+    /// # Errors
+    ///
+    /// Returns `AuthError::JwksFetchFailed` if JWKS fetch fails
+    pub async fn fetch_jwks(&self) -> Result<()> {
+        self.refresh_jwks().await
+    }
+
+    /// Validate token (alias for validate)
+    ///
+    /// # Arguments
+    ///
+    /// * `token` - The JWT token string
+    ///
+    /// # Returns
+    ///
+    /// Returns the decoded claims if validation succeeds
+    ///
+    /// # Errors
+    ///
+    /// Returns `AuthError` if validation fails
+    pub async fn validate_token(&self, token: &str) -> Result<Claims> {
+        self.validate(token).await
+    }
 }
 
 #[cfg(test)]
@@ -462,9 +499,9 @@ mod tests {
             sub: "user123".to_string(),
             iss: "https://issuer.example.com".to_string(),
             aud: vec!["xzepr-mcp".to_string()],
-            exp: 1234567890,
+            exp: 1_234_567_890,
             nbf: None,
-            iat: Some(1234567800),
+            iat: Some(1_234_567_800),
             scope: "xzepr:read xzepr:write openid".to_string(),
             email: Some("user@example.com".to_string()),
             preferred_username: Some("user123".to_string()),
@@ -482,9 +519,9 @@ mod tests {
             sub: "user123".to_string(),
             iss: "https://issuer.example.com".to_string(),
             aud: vec!["xzepr-mcp".to_string()],
-            exp: 1234567890,
+            exp: 1_234_567_890,
             nbf: None,
-            iat: Some(1234567800),
+            iat: Some(1_234_567_800),
             scope: "xzepr:read xzepr:write".to_string(),
             email: None,
             preferred_username: None,
@@ -502,9 +539,9 @@ mod tests {
             sub: "user123".to_string(),
             iss: "https://issuer.example.com".to_string(),
             aud: vec!["xzepr-mcp".to_string()],
-            exp: 1234567890,
+            exp: 1_234_567_890,
             nbf: None,
-            iat: Some(1234567800),
+            iat: Some(1_234_567_800),
             scope: "".to_string(),
             email: Some("user@example.com".to_string()),
             preferred_username: Some("testuser".to_string()),
@@ -546,9 +583,9 @@ mod tests {
             sub: "user123".to_string(),
             iss: "https://issuer.example.com".to_string(),
             aud: vec!["xzepr-mcp".to_string()],
-            exp: 1234567890,
+            exp: 1_234_567_890,
             nbf: None,
-            iat: Some(1234567800),
+            iat: Some(1_234_567_800),
             scope: "xzepr:read xzepr:write".to_string(),
             email: None,
             preferred_username: None,
@@ -564,9 +601,9 @@ mod tests {
             sub: "user123".to_string(),
             iss: "https://issuer.example.com".to_string(),
             aud: vec!["xzepr-mcp".to_string()],
-            exp: 1234567890,
+            exp: 1_234_567_890,
             nbf: None,
-            iat: Some(1234567800),
+            iat: Some(1_234_567_800),
             scope: "xzepr:read".to_string(),
             email: None,
             preferred_username: None,

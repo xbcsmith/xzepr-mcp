@@ -406,9 +406,9 @@ use xzepr_mcp::error::{Error, ErrorContext};
 fn load_config(path: &str) -> xzepr_mcp::Result<Config> {
     let contents = std::fs::read_to_string(path)
         .context("Failed to read configuration file")?;
-    
+
     let config: Config = serde_yaml::from_str(&contents)?;
-    
+
     Ok(config)
 }
 

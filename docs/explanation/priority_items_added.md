@@ -475,6 +475,6 @@ histogram_quantile(0.95, rate(xzepr_mcp_request_duration_seconds_bucket[5m]))
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2024-01-XX  
+**Document Version**: 1.0
+**Last Updated**: 2024-01-XX
 **Status**: COMPLETE

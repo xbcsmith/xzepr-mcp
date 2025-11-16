@@ -47,7 +47,7 @@ use rmcp::{
     model::*,
     tool, tool_handler, tool_router,
     transport::streamable_http_server::{
-        StreamableHttpService, 
+        StreamableHttpService,
         session::local::LocalSessionManager,
     },
 };
@@ -74,7 +74,7 @@ src/
 
 **Why**: XZepr-MCP is a protocol adapter with no business logic. DDD layers would be over-engineering.
 
-**Impact**: 
+**Impact**:
 - AGENTS.md updated to reflect appropriate architecture for MCP servers
 - Simpler, more maintainable codebase
 - Clear separation of concerns by technical responsibility
@@ -487,6 +487,6 @@ The XZepr MCP Rust Server architecture is:
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2024-01-XX  
+**Document Version**: 1.0
+**Last Updated**: 2024-01-XX
 **Status**: APPROVED

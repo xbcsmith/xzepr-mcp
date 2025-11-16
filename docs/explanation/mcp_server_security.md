@@ -64,7 +64,7 @@ Security Amnesia
 
 I mean eventually we all build something to run arbitrary commands in our pipelines... Passwordless SSH anyone? I am looking at you Ansible.
 
-The rush to create AI solutions the industry seems to have forgotten application security 101. 
+The rush to create AI solutions the industry seems to have forgotten application security 101.
 
 This regression in security practices has reintroduced attacks that we shouldn't see in 2025.
 
@@ -78,7 +78,7 @@ Security 101
 - Protect the Data
 - Separate Concerns
 - Check Results
- 
+
 ## Not So Secure by Design
 
 The Model Context Protocol (MCP) was designed primarily for functionality rather than security, creating fundamental vulnerabilities that cannot be easily patched in implementations:
@@ -95,7 +95,7 @@ MCP has design flaws that make security hard:
 - Weak auth guidance: Protocol doesn't enforce authentication standards
 - Trust model assumes good actors: No protection against malicious servers
 
-## MCP Servers recurring security problems 
+## MCP Servers recurring security problems
 
 Vulnerabilities in MCP Servers
 
@@ -158,7 +158,7 @@ The MCP Server or downstream APIs might implement important security controls li
 Accountability and Audit Trail Issues
 
 The MCP Server will be unable to identify or distinguish between MCP Clients when clients are calling with an upstream-issued access token which may be opaque to the MCP Server. The downstream Resource Server's logs may show requests that appear to come from a different source with a different identity, rather than the MCP server that is actually forwarding the tokens.Both factors make incident investigation, controls, and auditing more difficult. If the MCP Server passes tokens without validating their claims (e.g., roles, privileges, or audience) or other metadata, a malicious actor in possession of a stolen token can use the server as a proxy for data exfiltration.
-    
+
 Trust Boundary Issues
 
 The downstream Resource Server grants trust to specific entities. This trust might include assumptions about origin or client behavior patterns. Breaking this trust boundary could lead to unexpected issues. If the token is accepted by multiple services without proper validation, an attacker compromising one service can use the token to access other connected services.

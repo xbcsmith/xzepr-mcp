@@ -5,7 +5,7 @@
 - **Date**: 2024-01-XX
 - **Status**: CRITICAL REVIEW
 - **Reviewer**: Security Architecture Analysis
-- **References**: 
+- **References**:
   - `mcp_server_security.md` - MCP security best practices
   - `xzepr_mcp_rust_architecture.md` - Current architecture
 
@@ -84,7 +84,7 @@ pub struct OidcConfig {
 // Token validation MUST include:
 fn validate_token(token: &str, config: &OidcConfig) -> Result<Claims, AuthError> {
     let claims = decode_jwt(token)?;
-    
+
     // CRITICAL: Verify token audience
     if !claims.aud.contains(&config.audience) {
         return Err(AuthError::WrongAudience {
@@ -92,17 +92,17 @@ fn validate_token(token: &str, config: &OidcConfig) -> Result<Claims, AuthError>
             actual: claims.aud,
         });
     }
-    
+
     // Verify issuer
     if claims.iss != config.issuer_url {
         return Err(AuthError::WrongIssuer);
     }
-    
+
     // Verify expiration
     if claims.exp < Utc::now().timestamp() {
         return Err(AuthError::TokenExpired);
     }
-    
+
     Ok(claims)
 }
 ```
@@ -179,7 +179,7 @@ fn validate_tool_permission(
     token_scopes: &[String],
 ) -> Result<(), AuthError> {
     let perms = TOOL_PERMISSIONS.get(tool)?;
-    
+
     if !token_scopes.contains(&perms.required_scope) {
         return Err(AuthError::InsufficientScope {
             tool,
@@ -187,7 +187,7 @@ fn validate_tool_permission(
             actual: token_scopes,
         });
     }
-    
+
     Ok(())
 }
 ```
@@ -199,7 +199,7 @@ fn validate_tool_permission(
 pub fn sanitize_event_payload(payload: &serde_json::Value) -> serde_json::Value {
     // Remove potentially dangerous instruction patterns
     let sanitized = remove_instruction_patterns(payload);
-    
+
     // Add warning if suspicious content detected
     if contains_prompt_injection_markers(&sanitized) {
         log::warn!(
@@ -208,7 +208,7 @@ pub fn sanitize_event_payload(payload: &serde_json::Value) -> serde_json::Value 
             patterns = detected_patterns,
         );
     }
-    
+
     sanitized
 }
 
@@ -306,12 +306,12 @@ impl SessionManager {
         let sessions = self.sessions.read().await;
         let session = sessions.get(session_id)
             .ok_or(SessionError::NotFound)?;
-        
+
         // Verify user binding
         if session.user_id != user_id {
             return Err(SessionError::UserMismatch);
         }
-        
+
         // Verify IP (optional, may break with proxies)
         if session.ip_address != ip {
             log::warn!(
@@ -321,15 +321,15 @@ impl SessionManager {
                 actual = %ip,
             );
         }
-        
+
         // Check expiration
         if session.expires_at < Utc::now() {
             return Err(SessionError::Expired);
         }
-        
+
         Ok(())
     }
-    
+
     // Rotate session ID periodically
     pub async fn rotate_session(&self, old_id: &SessionId) -> Result<SessionId, SessionError> {
         let new_id = SessionId::generate();
@@ -391,18 +391,18 @@ impl RateLimitMiddleware {
         // Global per-user limit
         let limiters = self.user_limiters.read().await;
         let limiter = limiters.get(user_id).ok_or(RateLimitError::NoLimiter)?;
-        
+
         limiter.check().map_err(|_| RateLimitError::ExceededGlobal {
             user_id: user_id.to_string(),
             retry_after: limiter.wait_time(),
         })?;
-        
+
         // Per-tool limit
         if let Some(tool_limit) = self.config.per_tool_limits.get(tool) {
             // Check tool-specific rate
             self.check_tool_rate(user_id, tool, tool_limit)?;
         }
-        
+
         Ok(())
     }
 }
@@ -456,14 +456,14 @@ pub struct CreateEventInput {
     #[validate(length(min = 1, max = 255))]
     #[validate(custom = "validate_no_injection")]
     pub name: String,
-    
+
     #[validate(custom = "validate_semver")]
     pub version: String,
-    
+
     #[validate(length(max = 1000))]
     #[validate(custom = "validate_no_injection")]
     pub description: String,
-    
+
     #[validate(custom = "validate_json_size")]
     #[validate(custom = "validate_no_injection_json")]
     pub payload: serde_json::Value,
@@ -480,7 +480,7 @@ fn validate_no_injection(value: &str) -> Result<(), ValidationError> {
         "You are now",
         "Disregard",
     ];
-    
+
     let lower = value.to_lowercase();
     for pattern in INJECTION_PATTERNS {
         if lower.contains(&pattern.to_lowercase()) {
@@ -488,7 +488,7 @@ fn validate_no_injection(value: &str) -> Result<(), ValidationError> {
                 .with_message("Input contains suspicious instruction patterns"));
         }
     }
-    
+
     Ok(())
 }
 
@@ -534,7 +534,7 @@ fn validate_ulid(id: &str) -> Result<(), ValidationError> {
     if id.len() != 26 {
         return Err(ValidationError::new("invalid_ulid_length"));
     }
-    
+
     // Validate Crockford Base32
     const CROCKFORD_ALPHABET: &str = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
     for c in id.chars() {
@@ -542,7 +542,7 @@ fn validate_ulid(id: &str) -> Result<(), ValidationError> {
             return Err(ValidationError::new("invalid_ulid_character"));
         }
     }
-    
+
     Ok(())
 }
 ```
@@ -608,7 +608,7 @@ impl AuditLog {
             token_fp = %self.token_fingerprint,
             "Audit log entry"
         );
-        
+
         // Also send to dedicated audit log store
         // (database, SIEM, etc.)
     }
@@ -718,10 +718,10 @@ impl SecurityMonitor {
         user_id: &str,
     ) -> Vec<SecurityAlert> {
         let mut alerts = vec![];
-        
+
         // Check for excessive failed auth
-        if self.count_recent_failures(user_id, FailureType::Auth) 
-            > self.alert_thresholds.failed_auth_count 
+        if self.count_recent_failures(user_id, FailureType::Auth)
+            > self.alert_thresholds.failed_auth_count
         {
             alerts.push(SecurityAlert::ExcessiveAuthFailures {
                 user_id: user_id.to_string(),
@@ -729,7 +729,7 @@ impl SecurityMonitor {
                 time_window: Duration::minutes(5),
             });
         }
-        
+
         // Check for data exfiltration pattern
         if self.detect_exfiltration_pattern(user_id).await {
             alerts.push(SecurityAlert::SuspiciousDataFlow {
@@ -737,20 +737,20 @@ impl SecurityMonitor {
                 pattern: "Read followed by write with similar data",
             });
         }
-        
+
         // Check for prompt injection attempts
-        if self.count_injection_attempts(user_id) 
-            > self.alert_thresholds.suspicious_patterns 
+        if self.count_injection_attempts(user_id)
+            > self.alert_thresholds.suspicious_patterns
         {
             alerts.push(SecurityAlert::PossiblePromptInjection {
                 user_id: user_id.to_string(),
                 attempts: count,
             });
         }
-        
+
         alerts
     }
-    
+
     async fn detect_exfiltration_pattern(&self, user_id: &str) -> bool {
         // Analyze sequence: read_event → create_event within short time
         // Check if created event contains data from read event
@@ -1023,7 +1023,7 @@ The XZepr MCP server has a **solid architectural foundation** but requires **cri
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2024-01-XX  
-**Next Review**: After implementation of critical changes  
+**Document Version**: 1.0
+**Last Updated**: 2024-01-XX
+**Next Review**: After implementation of critical changes
 **Status**: CRITICAL SECURITY REVIEW REQUIRED

@@ -533,7 +533,7 @@ Document any accepted risks (requires security team approval):
 
 ---
 
-**Checklist Version**: 1.0  
-**Last Updated**: 2024-01-XX  
-**Next Review**: After implementation completion  
+**Checklist Version**: 1.0
+**Last Updated**: 2024-01-XX
+**Next Review**: After implementation completion
 **Status**: IN PROGRESS

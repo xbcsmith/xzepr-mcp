@@ -3,6 +3,12 @@
 //! This module defines all error types used throughout the application,
 //! with proper error propagation and context preservation.
 
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
+use serde::Serialize;
 use std::fmt;
 
 /// Main error type for XZepr MCP operations
@@ -294,9 +300,9 @@ impl Error {
     pub fn is_retriable(&self) -> bool {
         matches!(
             self,
-            Error::HttpClient(HttpClientError::Timeout { .. })
-                | Error::HttpClient(HttpClientError::ConnectionFailed(_))
-                | Error::XzeprApi(XzeprApiError::ServiceUnavailable(_))
+            Error::HttpClient(
+                HttpClientError::Timeout { .. } | HttpClientError::ConnectionFailed(_)
+            ) | Error::XzeprApi(XzeprApiError::ServiceUnavailable(_))
                 | Error::External(_)
         )
     }
@@ -327,6 +333,29 @@ impl Error {
     }
 }
 
+/// Error response for API endpoints
+#[derive(Debug, Serialize)]
+struct ErrorResponse {
+    error: String,
+    category: String,
+    status: u16,
+}
+
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        let status_code =
+            StatusCode::from_u16(self.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+
+        let body = ErrorResponse {
+            error: self.to_string(),
+            category: self.category().to_string(),
+            status: self.status_code(),
+        };
+
+        (status_code, Json(body)).into_response()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -346,7 +375,7 @@ mod tests {
     #[test]
     fn test_validation_error_status_code() {
         let err = Error::Validation(ValidationError::PayloadTooLarge {
-            size: 100000,
+            size: 100_000,
             max: 65536,
         });
         assert_eq!(err.status_code(), 400);
@@ -437,7 +466,7 @@ mod tests {
     #[test]
     fn test_validation_error_types() {
         let err = ValidationError::PayloadTooLarge {
-            size: 100000,
+            size: 100_000,
             max: 65536,
         };
         assert!(err.to_string().contains("100000"));

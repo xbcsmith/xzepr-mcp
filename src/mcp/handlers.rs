@@ -21,6 +21,7 @@ use std::sync::Arc;
 /// Tool handlers with integrated security
 pub struct ToolHandlers {
     /// XZepr API client
+    #[allow(dead_code)]
     _xzepr_client: Arc<XzeprClient>,
 
     /// JWT validator
@@ -113,7 +114,33 @@ impl ToolHandlers {
         }
     }
 
-    /// Handle a tool call request
+    /// Handle a tool call request (simplified interface)
+    ///
+    /// # Arguments
+    ///
+    /// * `tool_name` - Name of the tool to call
+    /// * `params` - Tool call parameters as JSON value
+    ///
+    /// # Returns
+    ///
+    /// Returns the tool response as JSON value
+    ///
+    /// # Errors
+    ///
+    /// Returns error if tool call fails
+    pub async fn handle(
+        &self,
+        _tool_name: &str,
+        _params: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        // Stub implementation - will be implemented in Phase 2
+        Ok(serde_json::json!({
+            "success": true,
+            "data": {}
+        }))
+    }
+
+    /// Handle a tool call request (structured interface)
     ///
     /// # Arguments
     ///
@@ -139,12 +166,14 @@ impl ToolHandlers {
     }
 
     /// Handle get_event tool call
+    #[allow(dead_code)]
     async fn handle_get_event(&self, _event_id: &str, _claims: &Claims) -> Result<ToolResponse> {
         // Stub implementation - will be implemented in Phase 2
         Ok(ToolResponse::success(serde_json::json!({})))
     }
 
     /// Handle create_event tool call
+    #[allow(dead_code)]
     async fn handle_create_event(
         &self,
         _event_data: serde_json::Value,
@@ -155,6 +184,7 @@ impl ToolHandlers {
     }
 
     /// Handle search_events tool call
+    #[allow(dead_code)]
     async fn handle_search_events(
         &self,
         _query: serde_json::Value,
@@ -165,12 +195,14 @@ impl ToolHandlers {
     }
 
     /// Handle list_event_types tool call
+    #[allow(dead_code)]
     async fn handle_list_event_types(&self, _claims: &Claims) -> Result<ToolResponse> {
         // Stub implementation - will be implemented in Phase 2
         Ok(ToolResponse::success(serde_json::json!([])))
     }
 
     /// Handle get_event_schema tool call
+    #[allow(dead_code)]
     async fn handle_get_event_schema(
         &self,
         _event_type: &str,
