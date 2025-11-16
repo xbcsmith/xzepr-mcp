@@ -11,6 +11,7 @@
 
 use crate::config::XzeprConfig;
 use crate::error::Result;
+use crate::models::EventData;
 use std::sync::Arc;
 
 /// XZepr HTTP client
@@ -73,34 +74,62 @@ impl XzeprClient {
     /// # Errors
     ///
     /// Returns `XzeprApiError` if request fails
-    pub async fn get_event(&self, _event_id: &str) -> Result<serde_json::Value> {
+    pub async fn get_event(&self, _event_id: &str) -> Result<EventData> {
         // Stub implementation - will be implemented in Task 1.4
-        Ok(serde_json::json!({}))
+        Ok(EventData {
+            id: _event_id.to_string(),
+            event_type: "stub.event".to_string(),
+            data: serde_json::json!({}),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            source: Some("stub".to_string()),
+            version: Some("1.0.0".to_string()),
+        })
     }
 
     /// Create a new event
     ///
     /// # Arguments
     ///
-    /// * `event_data` - Event data to create
+    /// * `event_type` - Event type identifier
+    /// * `data` - Event payload data
+    /// * `source` - Optional event source
+    /// * `version` - Optional event schema version
     ///
     /// # Returns
     ///
-    /// Returns the created event
+    /// Returns the created event with assigned ULID
     ///
     /// # Errors
     ///
     /// Returns `XzeprApiError` if request fails
-    pub async fn create_event(&self, _event_data: serde_json::Value) -> Result<serde_json::Value> {
+    pub async fn create_event(
+        &self,
+        event_type: &str,
+        data: &serde_json::Value,
+        source: Option<&str>,
+        version: Option<&str>,
+    ) -> Result<EventData> {
         // Stub implementation - will be implemented in Task 1.4
-        Ok(serde_json::json!({}))
+        Ok(EventData {
+            id: ulid::Ulid::new().to_string(),
+            event_type: event_type.to_string(),
+            data: data.clone(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            source: source.map(|s| s.to_string()),
+            version: version.map(|v| v.to_string()),
+        })
     }
 
     /// Search events
     ///
     /// # Arguments
     ///
-    /// * `query` - Search query parameters
+    /// * `event_type` - Optional event type filter
+    /// * `source` - Optional event source filter
+    /// * `from_timestamp` - Optional start timestamp (ISO 8601)
+    /// * `to_timestamp` - Optional end timestamp (ISO 8601)
+    /// * `limit` - Maximum results to return
+    /// * `offset` - Pagination offset
     ///
     /// # Returns
     ///
@@ -109,7 +138,15 @@ impl XzeprClient {
     /// # Errors
     ///
     /// Returns `XzeprApiError` if request fails
-    pub async fn search_events(&self, _query: serde_json::Value) -> Result<Vec<serde_json::Value>> {
+    pub async fn search_events(
+        &self,
+        _event_type: Option<&str>,
+        _source: Option<&str>,
+        _from_timestamp: Option<&str>,
+        _to_timestamp: Option<&str>,
+        _limit: i32,
+        _offset: i32,
+    ) -> Result<Vec<EventData>> {
         // Stub implementation - will be implemented in Task 1.4
         Ok(vec![])
     }
@@ -140,13 +177,14 @@ mod tests {
         let settings = Settings::default();
         let client = XzeprClient::new(&settings.xzepr);
 
-        let event_data = serde_json::json!({
-            "type": "test.event",
-            "data": {}
-        });
+        let event_data = serde_json::json!({"key": "value"});
 
-        let result = client.create_event(event_data).await;
+        let result = client
+            .create_event("test.event", &event_data, Some("test"), Some("1.0.0"))
+            .await;
         assert!(result.is_ok());
+        let event = result.unwrap();
+        assert_eq!(event.event_type, "test.event");
     }
 
     #[tokio::test]
@@ -154,11 +192,7 @@ mod tests {
         let settings = Settings::default();
         let client = XzeprClient::new(&settings.xzepr);
 
-        let query = serde_json::json!({
-            "type": "test.event"
-        });
-
-        let result = client.search_events(query).await;
+        let result = client.search_events(None, None, None, None, 10, 0).await;
         assert!(result.is_ok());
     }
 }

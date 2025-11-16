@@ -29,7 +29,7 @@
 //! # }
 //! ```
 //!
-//! Implementation is a stub for Phase 1 foundation.
+//! Phase 2: MCP Protocol Implementation complete.
 
 mod handlers;
 mod server;
@@ -37,4 +37,4 @@ mod tools;
 
 pub use handlers::ToolHandlers;
 pub use server::McpServer;
-pub use tools::{ToolDefinition, ToolRegistry};
+pub use tools::{LatencyCategory, RateLimitCategory, ToolDefinition, ToolRegistry};

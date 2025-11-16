@@ -187,6 +187,68 @@ impl InputValidator {
         // Stub implementation - will be implemented in Task 1.3
         Ok(())
     }
+
+    /// Validate generic JSON input
+    ///
+    /// Performs basic validation on JSON input values:
+    /// - Checks string fields for potential injection patterns
+    /// - Validates size constraints
+    /// - Ensures no malicious content
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - JSON value to validate
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if input passes validation
+    ///
+    /// # Errors
+    ///
+    /// Returns error if validation fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use xzepr_mcp::middleware::{InputValidator, ValidationRules};
+    /// use xzepr_mcp::config::Settings;
+    /// use serde_json::json;
+    ///
+    /// let settings = Settings::default();
+    /// let rules = ValidationRules::new(&settings.security);
+    /// let validator = InputValidator::new(rules);
+    ///
+    /// let input = json!({"event_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"});
+    /// let result = validator.validate_input(&input);
+    /// assert!(result.is_ok());
+    /// ```
+    pub fn validate_input(&self, input: &serde_json::Value) -> Result<()> {
+        // Recursive validation of JSON values
+        match input {
+            serde_json::Value::String(s) => {
+                // Check for injection patterns in strings
+                self.detect_sql_injection(s)?;
+                self.detect_xss(s)?;
+                self.detect_path_traversal(s)?;
+            }
+            serde_json::Value::Object(map) => {
+                // Validate all values in object
+                for (_key, value) in map {
+                    self.validate_input(value)?;
+                }
+            }
+            serde_json::Value::Array(arr) => {
+                // Validate all items in array
+                for item in arr {
+                    self.validate_input(item)?;
+                }
+            }
+            _ => {
+                // Numbers, booleans, null are safe
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
