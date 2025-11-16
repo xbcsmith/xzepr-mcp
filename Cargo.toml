@@ -1,0 +1,113 @@
+[package]
+name = "xzepr-mcp"
+version = "0.1.0"
+edition = "2021"
+authors = ["XZepr Team"]
+license = "Apache-2.0"
+description = "MCP server for XZepr Event Tracking System"
+repository = "https://github.com/xbcsmith/xzepr-mcp"
+readme = "README.md"
+keywords = ["mcp", "xzepr", "event-tracking", "observability"]
+categories = ["development-tools", "web-programming"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Web framework
+axum = { version = "0.7", features = ["macros", "json"] }
+tower = { version = "0.4", features = ["limit", "buffer", "timeout"] }
+tower-http = { version = "0.5", features = ["trace", "cors", "compression-gzip"] }
+
+# MCP protocol
+rmcp = "0.1"
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Authentication & JWT
+jsonwebtoken = "9.2"
+openidconnect = "3.4"
+
+# Configuration
+config = "0.14"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+regex = "1.10"
+semver = "1.0"
+
+# Identifiers
+ulid = { version = "1.1", features = ["serde"] }
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Rate limiting
+governor = "0.6"
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-opentelemetry = "0.22"
+opentelemetry = { version = "0.21" }
+opentelemetry-otlp = { version = "0.14", features = ["trace"] }
+opentelemetry_sdk = { version = "0.21", features = ["rt-tokio", "trace"] }
+metrics = "0.22"
+metrics-exporter-prometheus = "0.13"
+
+# OpenAPI documentation
+utoipa = { version = "4.2", features = ["axum_extras", "chrono"] }
+utoipa-swagger-ui = { version = "6.0", features = ["axum"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Cryptography
+sha2 = "0.10"
+base64 = "0.21"
+
+# Caching
+moka = { version = "0.12", features = ["future"] }
+
+# CLI
+clap = { version = "4.4", features = ["derive", "env"] }
+
+# Logging
+log = "0.4"
+
+[dev-dependencies]
+# Testing
+tokio-test = "0.4"
+wiremock = "0.6"
+mockall = "0.12"
+proptest = "1.4"
+criterion = "0.5"
+
+# Test utilities
+tempfile = "3.8"
+assert_matches = "1.5"
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[profile.bench]
+inherits = "release"
+debug = true

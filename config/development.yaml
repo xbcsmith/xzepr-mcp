@@ -1,0 +1,59 @@
+# Development configuration for XZepr MCP
+# This file contains settings for local development
+
+server:
+  host: "127.0.0.1"
+  port: 8080
+  request_timeout_secs: 30
+  shutdown_timeout_secs: 10
+  max_payload_size: 65536  # 64KB
+  enable_cors: true
+  cors_origins: []  # Empty = allow all in development
+
+xzepr:
+  base_url: "http://localhost:8000"
+  timeout_secs: 30
+  max_retries: 3
+  retry_backoff_ms: 100
+  pool_size: 10
+  enable_circuit_breaker: true
+  circuit_breaker_threshold: 5
+  circuit_breaker_timeout_secs: 60
+
+auth:
+  oidc_provider_url: "http://localhost:8080/realms/xzepr"
+  jwt_issuer: "http://localhost:8080/realms/xzepr"
+  jwt_audience: "xzepr-mcp"
+  jwks_cache_ttl_secs: 3600  # 1 hour
+  jwks_refresh_interval_secs: 300  # 5 minutes
+  enable_jwt_validation: true
+  session_timeout_secs: 3600  # 1 hour
+  session_idle_timeout_secs: 1800  # 30 minutes
+  enable_session_binding: true
+
+rate_limit:
+  enabled: true
+  global_requests_per_minute: 1000
+  per_user_requests_per_minute: 100
+  per_tool_limits:
+    read_operations: 100
+    write_operations: 20
+    search_operations: 30
+
+observability:
+  enable_tracing: true
+  log_level: "debug"  # More verbose logging in development
+  otlp_endpoint: null  # Set to OTLP collector URL if available
+  enable_metrics: true
+  metrics_port: 9090
+  enable_audit_logging: true
+  audit_log_path: null  # null = stdout
+  service_name: "xzepr-mcp"
+  service_version: "0.1.0"
+
+security:
+  max_json_depth: 32
+  enable_sql_injection_detection: true
+  enable_xss_detection: true
+  enable_path_traversal_detection: true
+  query_param_allow_regex: "^[a-zA-Z0-9_\\-\\.]+$"

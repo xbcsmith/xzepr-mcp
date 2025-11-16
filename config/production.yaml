@@ -1,0 +1,62 @@
+# Production configuration for XZepr MCP
+# This file contains settings for production deployment
+# Override sensitive values using environment variables
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  request_timeout_secs: 30
+  shutdown_timeout_secs: 10
+  max_payload_size: 65536  # 64KB
+  enable_cors: true
+  cors_origins:
+    - "https://app.example.com"
+    - "https://dashboard.example.com"
+
+xzepr:
+  base_url: "https://xzepr-api.example.com"
+  timeout_secs: 30
+  max_retries: 3
+  retry_backoff_ms: 100
+  pool_size: 20
+  enable_circuit_breaker: true
+  circuit_breaker_threshold: 5
+  circuit_breaker_timeout_secs: 60
+
+auth:
+  oidc_provider_url: "https://keycloak.example.com/realms/xzepr"
+  jwt_issuer: "https://keycloak.example.com/realms/xzepr"
+  jwt_audience: "xzepr-mcp"
+  jwks_cache_ttl_secs: 3600  # 1 hour
+  jwks_refresh_interval_secs: 300  # 5 minutes
+  enable_jwt_validation: true
+  session_timeout_secs: 3600  # 1 hour
+  session_idle_timeout_secs: 1800  # 30 minutes
+  enable_session_binding: true
+
+rate_limit:
+  enabled: true
+  global_requests_per_minute: 1000
+  per_user_requests_per_minute: 100
+  per_tool_limits:
+    read_operations: 100
+    write_operations: 20
+    search_operations: 30
+
+observability:
+  enable_tracing: true
+  log_level: "info"
+  otlp_endpoint: "http://otel-collector:4317"
+  enable_metrics: true
+  metrics_port: 9090
+  enable_audit_logging: true
+  audit_log_path: "/var/log/xzepr-mcp/audit.log"
+  service_name: "xzepr-mcp"
+  service_version: "0.1.0"
+
+security:
+  max_json_depth: 32
+  enable_sql_injection_detection: true
+  enable_xss_detection: true
+  enable_path_traversal_detection: true
+  query_param_allow_regex: "^[a-zA-Z0-9_\\-\\.]+$"
