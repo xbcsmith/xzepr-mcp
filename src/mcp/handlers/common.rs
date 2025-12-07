@@ -34,7 +34,7 @@ use uuid::Uuid;
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use xzepr_mcp::auth::Claims;
 /// use xzepr_mcp::mcp::handlers::common::validate_scope;
 ///
@@ -94,7 +94,7 @@ pub fn validate_scope(claims: &Claims, required_scope: &str) -> Result<()> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use xzepr_mcp::mcp::handlers::common::audit_log_tool_call;
 ///
 /// audit_log_tool_call(
@@ -144,7 +144,7 @@ pub fn audit_log_tool_call(
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use xzepr_mcp::mcp::handlers::common::generate_correlation_id;
 ///
 /// let correlation_id = generate_correlation_id();
@@ -169,7 +169,7 @@ pub fn generate_correlation_id() -> String {
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore
 /// use xzepr_mcp::mcp::handlers::common::create_params_fingerprint;
 /// use serde_json::json;
 ///

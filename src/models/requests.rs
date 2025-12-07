@@ -22,13 +22,22 @@ pub struct ToolRequest {
 #[serde(untagged)]
 pub enum ToolCallParams {
     /// Get event parameters
-    GetEvent { event_id: String },
+    GetEvent {
+        /// The ULID of the event to retrieve
+        event_id: String,
+    },
 
     /// Create event parameters
-    CreateEvent { event_data: serde_json::Value },
+    CreateEvent {
+        /// The event data as JSON value
+        event_data: serde_json::Value,
+    },
 
     /// Search events parameters
-    SearchEvents { query: serde_json::Value },
+    SearchEvents {
+        /// The search query as JSON value
+        query: serde_json::Value,
+    },
 
     /// Generic parameters
     Generic(serde_json::Value),

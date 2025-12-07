@@ -1,4 +1,4 @@
-//! Configuration module for XZepr MCP
+//! Configuration module for `XZepr` MCP
 //!
 //! This module provides configuration management with support for:
 //! - YAML configuration files
@@ -18,6 +18,6 @@
 mod settings;
 
 pub use settings::{
-    AuthConfig, ObservabilityConfig, PerToolRateLimits, RateLimitConfig, SecurityConfig,
-    ServerConfig, Settings, XzeprConfig,
+    AuthConfig, DetectionConfig, ObservabilityConfig, PerToolRateLimits, RateLimitConfig,
+    SecurityCheck, SecurityConfig, ServerConfig, Settings, XzeprConfig,
 };

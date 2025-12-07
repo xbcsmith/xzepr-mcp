@@ -84,31 +84,43 @@ pub struct SessionManager {
 }
 
 impl SessionManager {
-    /// Create a new session manager
-    ///
-    /// # Arguments
-    ///
-    /// * `session_timeout` - Absolute session timeout
-    /// * `idle_timeout` - Idle timeout (no activity)
-    /// * `enable_binding` - Enable session binding to JWT sub claim
+    /// Create a new `SessionManager` using sensible defaults
     ///
     /// # Returns
     ///
-    /// Returns a new `SessionManager` instance
+    /// Returns a new `SessionManager` instance using default values:
+    /// * session timeout: 3600 seconds (1 hour)
+    /// * idle timeout: 1800 seconds (30 minutes)
+    /// * session binding enabled
     ///
     /// # Examples
     ///
     /// ```
     /// use xzepr_mcp::auth::SessionManager;
-    /// use std::time::Duration;
     ///
-    /// let manager = SessionManager::new(
-    ///     Duration::from_secs(3600),  // 1 hour
-    ///     Duration::from_secs(1800),  // 30 minutes
-    ///     true,
-    /// );
+    /// let manager = SessionManager::new();
     /// ```
-    pub fn new(session_timeout: Duration, idle_timeout: Duration, enable_binding: bool) -> Self {
+    pub fn new() -> Self {
+        // Use the same defaults that have been used across the code examples
+        Self::new_with_timeouts(Duration::from_secs(3600), Duration::from_secs(1800), true)
+    }
+
+    /// Create a new `SessionManager` with explicit timeouts and binding option.
+    ///
+    /// # Arguments
+    ///
+    /// * `session_timeout` - Absolute session timeout
+    /// * `idle_timeout` - Idle timeout (no activity)
+    /// * `enable_binding` - Enable session binding to JWT sub
+    ///
+    /// # Returns
+    ///
+    /// Returns a new `SessionManager` instance.
+    pub fn new_with_timeouts(
+        session_timeout: Duration,
+        idle_timeout: Duration,
+        enable_binding: bool,
+    ) -> Self {
         let sessions = Cache::builder()
             .time_to_live(session_timeout)
             .max_capacity(10_000)
@@ -139,15 +151,10 @@ impl SessionManager {
     ///
     /// ```
     /// use xzepr_mcp::auth::SessionManager;
-    /// use std::time::Duration;
     ///
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let manager = SessionManager::new(
-    ///     Duration::from_secs(3600),
-    ///     Duration::from_secs(1800),
-    ///     true,
-    /// );
+    /// let manager = SessionManager::new();
     ///
     /// let session_id = manager.create_session(
     ///     "user123".to_string(),
@@ -315,6 +322,12 @@ impl SessionManager {
     }
 }
 
+impl Default for SessionManager {
+    fn default() -> Self {
+        SessionManager::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -390,8 +403,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_and_get_session() {
-        let manager =
-            SessionManager::new(Duration::from_secs(3600), Duration::from_secs(1800), true);
+        let manager = SessionManager::new_with_timeouts(
+            Duration::from_secs(3600),
+            Duration::from_secs(1800),
+            true,
+        );
 
         let session_id = manager
             .create_session(
@@ -409,8 +425,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_nonexistent_session() {
-        let manager =
-            SessionManager::new(Duration::from_secs(3600), Duration::from_secs(1800), true);
+        let manager = SessionManager::new_with_timeouts(
+            Duration::from_secs(3600),
+            Duration::from_secs(1800),
+            true,
+        );
 
         let result = manager.get_session("nonexistent").await;
         assert!(result.is_err());
@@ -418,8 +437,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_validate_session_with_binding() {
-        let manager =
-            SessionManager::new(Duration::from_secs(3600), Duration::from_secs(1800), true);
+        let manager = SessionManager::new_with_timeouts(
+            Duration::from_secs(3600),
+            Duration::from_secs(1800),
+            true,
+        );
 
         let session_id = manager
             .create_session("user123".to_string(), None, "Test User".to_string(), vec![])
@@ -436,7 +458,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_validate_session_without_binding() {
-        let manager = SessionManager::new(
+        let manager = SessionManager::new_with_timeouts(
             Duration::from_secs(3600),
             Duration::from_secs(1800),
             false, // Binding disabled
@@ -453,8 +475,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_invalidate_session() {
-        let manager =
-            SessionManager::new(Duration::from_secs(3600), Duration::from_secs(1800), true);
+        let manager = SessionManager::new_with_timeouts(
+            Duration::from_secs(3600),
+            Duration::from_secs(1800),
+            true,
+        );
 
         let session_id = manager
             .create_session("user123".to_string(), None, "Test User".to_string(), vec![])
@@ -468,8 +493,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_rotate_session() {
-        let manager =
-            SessionManager::new(Duration::from_secs(3600), Duration::from_secs(1800), true);
+        let manager = SessionManager::new_with_timeouts(
+            Duration::from_secs(3600),
+            Duration::from_secs(1800),
+            true,
+        );
 
         let old_session_id = manager
             .create_session(

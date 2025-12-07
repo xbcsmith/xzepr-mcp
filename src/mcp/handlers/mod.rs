@@ -92,14 +92,14 @@ impl ToolHandlers {
     ///     Duration::from_secs(3600),
     ///     true,
     /// ));
-    /// let session_manager = Arc::new(SessionManager::new(
+    /// let session_manager = Arc::new(SessionManager::new_with_timeouts(
     ///     Duration::from_secs(3600),
     ///     Duration::from_secs(1800),
     ///     true,
     /// ));
     /// let rate_limiter = Arc::new(RateLimiter::new(&settings.rate_limit));
     /// let validation_rules = ValidationRules::new(&settings.security);
-    /// let input_validator = Arc::new(InputValidator::new(validation_rules));
+    /// let input_validator = Arc::new(InputValidator::new_with_rules(validation_rules));
     /// let tool_registry = Arc::new(ToolRegistry::new());
     ///
     /// let handlers = ToolHandlers::new(
@@ -336,14 +336,14 @@ mod tests {
             Duration::from_secs(3600),
             true,
         ));
-        let session_manager = Arc::new(SessionManager::new(
+        let session_manager = Arc::new(SessionManager::new_with_timeouts(
             Duration::from_secs(3600),
             Duration::from_secs(1800),
             true,
         ));
         let rate_limiter = Arc::new(RateLimiter::new(&settings.rate_limit));
         let validation_rules = ValidationRules::new(&settings.security);
-        let input_validator = Arc::new(InputValidator::new(validation_rules));
+        let input_validator = Arc::new(InputValidator::new_with_rules(validation_rules));
         let tool_registry = Arc::new(ToolRegistry::new());
 
         ToolHandlers::new(

@@ -101,7 +101,7 @@ src/mcp/handlers/
 ```rust
 pub fn validate_scope(claims: &Claims, required_scope: &str) -> Result<()> {
     let scopes: Vec<&str> = claims.scope.split_whitespace().collect();
-    
+
     if scopes.contains(&required_scope) {
         info!("Scope validation passed");
         Ok(())
@@ -186,22 +186,22 @@ pub async fn handle_fetch_event(
 ) -> Result<ToolResponse> {
     let start = Instant::now();
     let correlation_id = generate_correlation_id();
-    
+
     // Validate scope
     validate_scope(claims, "xzepr:read")?;
-    
+
     // Validate input
     input_validator.validate_input(&json!({
         "event_id": event_id
     }))?;
-    
+
     // Fetch from XZepr
     match xzepr_client.get_event(event_id).await {
         Ok(event) => {
             let duration = start.elapsed().as_millis() as u64;
-            audit_log_tool_call(&claims.sub, "fetch_event", 
+            audit_log_tool_call(&claims.sub, "fetch_event",
                 &format!("event_id={}", event_id), true, None, duration);
-            
+
             Ok(ToolResponse {
                 success: true,
                 data: Some(json!({
@@ -214,7 +214,7 @@ pub async fn handle_fetch_event(
         Err(e) => {
             let duration = start.elapsed().as_millis() as u64;
             audit_log_tool_call(&claims.sub, "fetch_event",
-                &format!("event_id={}", event_id), false, 
+                &format!("event_id={}", event_id), false,
                 Some(&e.to_string()), duration);
             Err(e)
         }
@@ -250,10 +250,10 @@ pub async fn handle_tool_call(
 ) -> Result<ToolResponse> {
     // Validate tool exists
     let _tool = common::validate_tool_exists(
-        tool_name, 
+        tool_name,
         self.tool_registry.get(tool_name)
     )?;
-    
+
     // Route to appropriate handler
     match tool_name {
         "fetch_event" => events::handle_fetch_event(...).await,
@@ -436,11 +436,11 @@ async fn test_handle_fetch_event_missing_scope() {
     let client = create_test_xzepr_client();
     let validator = create_test_validator();
     let claims = create_test_claims("xzepr:write"); // Wrong scope
-    
+
     let result = handle_fetch_event(
         client, validator, "01ARZ3NDEKTSV4RRFFQ69G5FAV", &claims
     ).await;
-    
+
     assert!(result.is_err());
     assert!(matches!(result.unwrap_err(), Error::Auth(_)));
 }
@@ -453,11 +453,11 @@ async fn test_handle_search_events_invalid_limit() {
     let client = create_test_xzepr_client();
     let validator = create_test_validator();
     let claims = create_test_claims("xzepr:read");
-    
+
     let result = handle_search_events(
         client, validator, None, None, None, None, Some(200), Some(0), &claims
     ).await;
-    
+
     assert!(result.is_err());
     assert!(matches!(result.unwrap_err(), Error::Validation(_)));
 }

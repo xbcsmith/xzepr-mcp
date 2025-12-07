@@ -14,10 +14,12 @@
 
 use crate::error::{ConfigError, Result};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::time::Duration;
 
 /// Main application settings
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     /// Server configuration
@@ -40,6 +42,7 @@ pub struct Settings {
 }
 
 /// Server configuration
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
     /// Server host to bind to
@@ -72,6 +75,7 @@ pub struct ServerConfig {
 }
 
 /// XZepr API configuration
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XzeprConfig {
     /// Base URL for XZepr API
@@ -107,6 +111,7 @@ pub struct XzeprConfig {
 }
 
 /// Authentication configuration
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthConfig {
     /// OIDC provider URL (e.g., https://keycloak.example.com/realms/xzepr)
@@ -145,6 +150,7 @@ pub struct AuthConfig {
 }
 
 /// Rate limiting configuration
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RateLimitConfig {
     /// Enable rate limiting
@@ -165,6 +171,7 @@ pub struct RateLimitConfig {
 }
 
 /// Per-tool rate limit configuration
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerToolRateLimits {
     /// Rate limit for read operations (per minute)
@@ -181,6 +188,7 @@ pub struct PerToolRateLimits {
 }
 
 /// Observability configuration
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ObservabilityConfig {
     /// Enable tracing
@@ -218,6 +226,90 @@ pub struct ObservabilityConfig {
     pub service_version: String,
 }
 
+/// Enum representing the available security checks that can be enabled
+/// or disabled through configuration (for example via `DetectionConfig`).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
+pub enum SecurityCheck {
+    /// SQL injection detection
+    SqlInjection,
+
+    /// XSS detection
+    Xss,
+
+    /// Path traversal detection
+    PathTraversal,
+
+    /// SSRF detection
+    Ssrf,
+}
+
+impl std::fmt::Display for SecurityCheck {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use SecurityCheck::{PathTraversal, SqlInjection, Ssrf, Xss};
+        let s = match self {
+            SqlInjection => "sql_injection",
+            Xss => "xss",
+            PathTraversal => "path_traversal",
+            Ssrf => "ssrf",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+impl SecurityCheck {
+    /// All supported security checks
+    pub fn all_checks() -> HashSet<SecurityCheck> {
+        use SecurityCheck::{PathTraversal, SqlInjection, Ssrf, Xss};
+        let mut s = HashSet::new();
+        s.insert(SqlInjection);
+        s.insert(Xss);
+        s.insert(PathTraversal);
+        s.insert(Ssrf);
+        s
+    }
+}
+
+/// Detection configuration represented as a set of enabled checks.
+/// This is preferable to many individual bool fields because it scales better
+/// and avoids struct-excessive-bools lint warnings.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DetectionConfig {
+    /// Set of enabled security checks
+    #[serde(default = "default_enabled_checks")]
+    pub enabled_checks: HashSet<SecurityCheck>,
+}
+
+impl Default for DetectionConfig {
+    fn default() -> Self {
+        Self {
+            enabled_checks: default_enabled_checks(),
+        }
+    }
+}
+
+impl DetectionConfig {
+    /// Return whether the provided `SecurityCheck` is enabled by the current configuration.
+    ///
+    /// This is a convenience wrapper that abstracts the underlying representation
+    /// (a set of enabled checks), and provides a clear entrypoint for other modules.
+    ///
+    /// # Arguments
+    ///
+    /// * `check` - The `SecurityCheck` to query
+    ///
+    /// # Returns
+    ///
+    /// `true` if the check is enabled; otherwise `false`.
+    pub fn is_enabled(&self, check: SecurityCheck) -> bool {
+        self.enabled_checks.contains(&check)
+    }
+}
+
+/// Default detection set (enable the common checks by default)
+pub fn default_enabled_checks() -> HashSet<SecurityCheck> {
+    SecurityCheck::all_checks()
+}
+
 /// Security configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SecurityConfig {
@@ -225,17 +317,21 @@ pub struct SecurityConfig {
     #[serde(default = "default_max_json_depth")]
     pub max_json_depth: usize,
 
-    /// Enable SQL injection detection
-    #[serde(default = "default_true")]
-    pub enable_sql_injection_detection: bool,
+    /// Maximum JSON object key count allowed during validation
+    #[serde(default = "default_max_json_keys")]
+    pub max_json_keys: usize,
 
-    /// Enable XSS detection
-    #[serde(default = "default_true")]
-    pub enable_xss_detection: bool,
+    /// Maximum number of elements allowed inside a JSON array
+    #[serde(default = "default_max_array_len")]
+    pub max_array_len: usize,
 
-    /// Enable path traversal detection
-    #[serde(default = "default_true")]
-    pub enable_path_traversal_detection: bool,
+    /// Maximum length in bytes of string values within JSON payloads
+    #[serde(default = "default_max_string_len")]
+    pub max_string_len: usize,
+
+    /// Detection toggles grouped as a nested configuration.
+    #[serde(default)]
+    pub detection: DetectionConfig,
 
     /// Allowed query parameter characters regex
     #[serde(default = "default_query_param_regex")]
@@ -345,6 +441,18 @@ fn default_service_version() -> String {
 
 fn default_max_json_depth() -> usize {
     32
+}
+
+fn default_max_json_keys() -> usize {
+    1024
+}
+
+fn default_max_array_len() -> usize {
+    10000
+}
+
+fn default_max_string_len() -> usize {
+    1024 * 1024
 }
 
 fn default_query_param_regex() -> String {
@@ -548,9 +656,10 @@ impl Default for Settings {
             },
             security: SecurityConfig {
                 max_json_depth: default_max_json_depth(),
-                enable_sql_injection_detection: true,
-                enable_xss_detection: true,
-                enable_path_traversal_detection: true,
+                max_json_keys: default_max_json_keys(),
+                max_array_len: default_max_array_len(),
+                max_string_len: default_max_string_len(),
+                detection: DetectionConfig::default(),
                 query_param_allow_regex: default_query_param_regex(),
             },
         }

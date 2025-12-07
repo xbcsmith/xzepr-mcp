@@ -13,6 +13,7 @@
 //! - JWKS caching with TTL and automatic refresh
 //! - Unknown `kid` triggers JWKS refresh
 
+use crate::config::Settings;
 use crate::error::{AuthError, Result};
 use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use moka::future::Cache;
@@ -196,6 +197,39 @@ impl JwtValidator {
         }
     }
 
+    /// Create a JwtValidator from the application `Settings`.
+    ///
+    /// The helper uses `Settings::auth` configuration to build the validator
+    /// and will attempt a JWKS refresh if validation is enabled so that the
+    /// validator initialization fails fast when JWKS is unreachable or invalid.
+    ///
+    /// # Arguments
+    ///
+    /// * `settings` - Application settings that contain the Auth / OIDC config
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(Self)` when a validator could be created and (if enabled)
+    /// a JWKS refresh succeeded.
+    pub async fn from_settings(settings: &Settings) -> Result<Self> {
+        let cache_ttl = Duration::from_secs(settings.auth.jwks_cache_ttl_secs);
+
+        let validator = JwtValidator::new(
+            settings.auth.oidc_provider_url.clone(),
+            settings.auth.jwt_issuer.clone(),
+            settings.auth.jwt_audience.clone(),
+            cache_ttl,
+            settings.auth.enable_jwt_validation,
+        );
+
+        // If JWKS validation is enabled, try to fetch keys immediately to fail early.
+        if validator.validation_enabled {
+            validator.refresh_jwks().await?;
+        }
+
+        Ok(validator)
+    }
+
     /// Validate a JWT token
     ///
     /// # Arguments
@@ -260,14 +294,12 @@ impl JwtValidator {
         let decoding_key = self.get_decoding_key(&kid).await?;
 
         // Set up validation parameters
-        let mut validation = Validation::new(
-            header
-                .alg
-                .try_into()
-                .map_err(|_| AuthError::InvalidToken("Unsupported algorithm".to_string()))?,
-        );
+        let mut validation = Validation::new(header.alg);
         validation.set_issuer(&[&self.expected_issuer]);
         validation.set_required_spec_claims(&["exp", "iss", "aud", "sub"]);
+        // Set audience to validate - jsonwebtoken will check if any of the token's aud values
+        // match any of our expected audiences
+        validation.set_audience(&[&self.expected_audience]);
 
         // Decode and validate token
         let token_data =
@@ -284,10 +316,8 @@ impl JwtValidator {
 
         let claims = token_data.claims;
 
-        // Validate audience contains required value
-        if !claims.aud.iter().any(|aud| aud == &self.expected_audience) {
-            return Err(AuthError::InvalidAudience.into());
-        }
+        // Audience validation is done by jsonwebtoken via validation.set_audience() above
+        // so we don't need manual validation here
 
         // Validate nbf (not before) if present
         if let Some(nbf) = claims.nbf {
@@ -374,7 +404,13 @@ impl JwtValidator {
 
         info!("Fetched {} keys from JWKS", jwks.keys.len());
 
+        // Validate that we have at least one key
+        if jwks.keys.is_empty() {
+            return Err(AuthError::JwksFetchFailed("JWKS contains no keys".to_string()).into());
+        }
+
         // Cache all keys
+        let mut cached_count = 0;
         for jwk in jwks.keys {
             if jwk.kty != "RSA" {
                 debug!("Skipping non-RSA key: {}", jwk.kid);
@@ -402,7 +438,16 @@ impl JwtValidator {
                 .insert(jwk.kid.clone(), Arc::new(decoding_key))
                 .await;
 
+            cached_count += 1;
             debug!("Cached key: {}", jwk.kid);
+        }
+
+        // Ensure at least one usable signing key was found
+        if cached_count == 0 {
+            return Err(AuthError::JwksFetchFailed(
+                "JWKS contains no usable RSA signing keys".to_string(),
+            )
+            .into());
         }
 
         Ok(())
@@ -542,7 +587,7 @@ mod tests {
             exp: 1_234_567_890,
             nbf: None,
             iat: Some(1_234_567_800),
-            scope: "".to_string(),
+            scope: String::new(),
             email: Some("user@example.com".to_string()),
             preferred_username: Some("testuser".to_string()),
         };

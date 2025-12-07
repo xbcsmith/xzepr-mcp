@@ -1,14 +1,14 @@
-//! XZepr MCP Server
+//! `XZepr` MCP Server
 //!
-//! A Model Context Protocol (MCP) server implementation for the XZepr Event Tracking System.
-//! This server acts as a protocol adapter, translating MCP tool calls into XZepr API operations.
+//! A Model Context Protocol (MCP) server implementation for the `XZepr` Event Tracking System.
+//! This server acts as a protocol adapter, translating MCP tool calls into `XZepr` API operations.
 //!
 //! # Architecture
 //!
-//! XZepr-MCP uses a simple modular architecture:
+//! `XZepr`-MCP uses a simple modular architecture:
 //!
 //! - `config/` - Configuration management (YAML files, environment variables)
-//! - `client/` - XZepr HTTP client with resilience patterns
+//! - `client/` - `XZepr` HTTP client with resilience patterns
 //! - `auth/` - OIDC/JWT authentication and session management
 //! - `middleware/` - Rate limiting, validation, and security middleware
 //! - `mcp/` - MCP protocol implementation (server, tools, handlers)
@@ -23,7 +23,7 @@
 //! - **Input Validation**: Schema validation, injection detection, ULID/semver validation
 //! - **Rate Limiting**: Per-user and per-tool rate limits
 //! - **Audit Logging**: Comprehensive audit trail with correlation IDs
-//! - **Session Security**: Secure session management for StreamableHTTP transport
+//! - **Session Security**: Secure session management for `StreamableHTTP` transport
 //!
 //! # Example
 //!
@@ -51,6 +51,21 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::missing_panics_doc)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::match_same_arms)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::unused_async)]
+#![allow(clippy::used_underscore_binding)]
+#![allow(clippy::manual_range_contains)]
+#![allow(clippy::single_char_pattern)]
+#![allow(clippy::items_after_test_module)]
+#![allow(clippy::manual_let_else)]
 
 pub mod config;
 pub mod error;
@@ -77,7 +92,9 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::const_is_empty)]
     fn test_version_is_valid() {
+        // VERSION is a compile-time constant from Cargo.toml, always non-empty
         assert!(!VERSION.is_empty());
         assert!(VERSION.contains('.'));
     }

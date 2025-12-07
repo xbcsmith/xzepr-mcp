@@ -95,6 +95,15 @@ criterion = "0.5"
 # Test utilities
 tempfile = "3.8"
 assert_matches = "1.5"
+serial_test = "3.0"
+rstest = "0.18"
+insta = "1.34"
+
+# HTTP testing
+httpmock = "0.7"
+
+# Security testing
+test-case = "3.3"
 
 [[bench]]
 name = "benchmarks"

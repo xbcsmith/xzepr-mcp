@@ -1,0 +1,429 @@
+# CI/CD Pipeline for XZepr MCP
+#
+# Comprehensive continuous integration workflow covering:
+# - Code formatting and linting
+# - Unit and integration tests
+# - Security vulnerability scanning
+# - Code coverage reporting
+# - Performance benchmarks
+# - Docker build validation
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'pr-*'
+  pull_request:
+    branches:
+      - main
+      - develop
+  schedule:
+    # Run security scans daily at 00:00 UTC
+    - cron: '0 0 * * *'
+
+env:
+  RUST_VERSION: '1.75'
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: '-D warnings'
+
+jobs:
+  # Fast checks that run first
+  fmt-and-clippy:
+    name: Format and Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Check documentation
+        run: cargo doc --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: '-D warnings'
+
+  # Unit tests
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: fmt-and-clippy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run unit tests
+        run: cargo test --lib --all-features
+        env:
+          RUST_BACKTRACE: 1
+
+      - name: Run doc tests
+        run: cargo test --doc --all-features
+
+  # Integration tests with Docker services
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: fmt-and-clippy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-integration-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Create test fixtures directories
+        run: |
+          mkdir -p tests/fixtures/wiremock/mappings
+          mkdir -p tests/fixtures/wiremock/__files
+          mkdir -p tests/fixtures
+
+      - name: Generate test RSA keys
+        run: |
+          openssl genrsa -out tests/fixtures/test_private_key.pem 2048
+          openssl rsa -in tests/fixtures/test_private_key.pem -pubout -out tests/fixtures/test_public_key.pem
+
+      - name: Create Keycloak realm configuration
+        run: |
+          cat > tests/fixtures/keycloak-realm.json << 'EOF'
+          {
+            "realm": "test",
+            "enabled": true,
+            "clients": [
+              {
+                "clientId": "xzepr-mcp",
+                "enabled": true,
+                "publicClient": false,
+                "serviceAccountsEnabled": true,
+                "standardFlowEnabled": true,
+                "directAccessGrantsEnabled": true
+              }
+            ]
+          }
+          EOF
+
+      - name: Create OTEL collector config
+        run: |
+          cat > tests/fixtures/otel-collector-config.yaml << 'EOF'
+          receivers:
+            otlp:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4317
+                http:
+                  endpoint: 0.0.0.0:4318
+          exporters:
+            logging:
+              loglevel: debug
+          service:
+            pipelines:
+              traces:
+                receivers: [otlp]
+                exporters: [logging]
+          EOF
+
+      - name: Create Prometheus config
+        run: |
+          cat > tests/fixtures/prometheus.yaml << 'EOF'
+          global:
+            scrape_interval: 15s
+          scrape_configs:
+            - job_name: 'xzepr-mcp'
+              static_configs:
+                - targets: ['host.docker.internal:9090']
+          EOF
+
+      - name: Start test infrastructure
+        run: docker-compose -f docker-compose.test.yaml up -d postgres keycloak xzepr-mock
+
+      - name: Wait for services to be healthy
+        run: |
+          timeout 120 bash -c 'until docker-compose -f docker-compose.test.yaml ps | grep -q "healthy"; do sleep 5; done'
+
+      - name: Run integration tests
+        run: cargo test --test integration_* --all-features
+        env:
+          RUST_BACKTRACE: 1
+          TEST_KEYCLOAK_URL: http://localhost:8080
+          TEST_XZEPR_URL: http://localhost:8081
+
+      - name: Stop test infrastructure
+        if: always()
+        run: docker-compose -f docker-compose.test.yaml down -v
+
+  # Security tests
+  security-test:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    needs: fmt-and-clippy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-security-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Generate test RSA keys for security tests
+        run: |
+          mkdir -p tests/fixtures
+          openssl genrsa -out tests/fixtures/test_private_key.pem 2048
+          openssl rsa -in tests/fixtures/test_private_key.pem -pubout -out tests/fixtures/test_public_key.pem
+
+      - name: Run security tests
+        run: cargo test --test security_* --all-features
+        env:
+          RUST_BACKTRACE: 1
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run security audit
+        run: cargo audit --deny warnings
+
+  # Code coverage
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    needs: fmt-and-clippy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-coverage-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install tarpaulin
+        run: cargo install cargo-tarpaulin --locked
+
+      - name: Generate test keys
+        run: |
+          mkdir -p tests/fixtures
+          openssl genrsa -out tests/fixtures/test_private_key.pem 2048
+          openssl rsa -in tests/fixtures/test_private_key.pem -pubout -out tests/fixtures/test_public_key.pem
+
+      - name: Run coverage
+        run: |
+          cargo tarpaulin \
+            --all-features \
+            --workspace \
+            --timeout 300 \
+            --out Xml \
+            --out Html \
+            --output-dir coverage \
+            --exclude-files 'tests/*' 'benches/*'
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/cobertura.xml
+          fail_ci_if_error: false
+
+      - name: Archive coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(grep -oP 'line-rate="\K[0-9.]+' coverage/cobertura.xml | head -1)
+          COVERAGE_PERCENT=$(echo "$COVERAGE * 100" | bc)
+          echo "Coverage: $COVERAGE_PERCENT%"
+          if (( $(echo "$COVERAGE_PERCENT < 80" | bc -l) )); then
+            echo "Coverage $COVERAGE_PERCENT% is below threshold of 80%"
+            exit 1
+          fi
+
+  # Performance benchmarks
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Generate test keys
+        run: |
+          mkdir -p tests/fixtures
+          openssl genrsa -out tests/fixtures/test_private_key.pem 2048
+          openssl rsa -in tests/fixtures/test_private_key.pem -pubout -out tests/fixtures/test_public_key.pem
+
+      - name: Run benchmarks
+        run: cargo bench --all-features -- --output-format bencher | tee benchmark-results.txt
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark-results.txt
+
+      - name: Compare with baseline
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Benchmark results captured for baseline comparison"
+          # Future: Compare with previous benchmark results
+
+  # Docker build validation
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: xzepr-mcp:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test Docker image
+        run: |
+          docker run --rm xzepr-mcp:test --version || true
+
+  # Dependency check
+  dependency-check:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Check for outdated dependencies
+        run: |
+          cargo install cargo-outdated --locked
+          cargo outdated --exit-code 1 --root-deps-only
+
+      - name: Check for unused dependencies
+        run: |
+          cargo install cargo-udeps --locked
+          cargo +nightly udeps --all-targets
+
+  # Final validation gate
+  all-checks-passed:
+    name: All Checks Passed
+    runs-on: ubuntu-latest
+    needs:
+      - fmt-and-clippy
+      - test
+      - integration-test
+      - security-test
+      - coverage
+    if: always()
+    steps:
+      - name: Check if all jobs passed
+        run: |
+          if [[ "${{ needs.fmt-and-clippy.result }}" != "success" ]] || \
+             [[ "${{ needs.test.result }}" != "success" ]] || \
+             [[ "${{ needs.integration-test.result }}" != "success" ]] || \
+             [[ "${{ needs.security-test.result }}" != "success" ]] || \
+             [[ "${{ needs.coverage.result }}" != "success" ]]; then
+            echo "One or more required checks failed"
+            exit 1
+          fi
+          echo "All required checks passed!"

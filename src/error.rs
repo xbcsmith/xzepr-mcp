@@ -54,18 +54,28 @@ pub enum Error {
 /// Configuration-related errors
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
+    /// Failed to read configuration file from disk
     #[error("Failed to read config file: {0}")]
     ReadFailed(String),
 
+    /// YAML parsing error in configuration file
     #[error("Invalid YAML syntax: {0}")]
     ParseError(String),
 
+    /// Required configuration field is missing
     #[error("Missing required configuration: {0}")]
     MissingRequired(String),
 
+    /// Configuration value is invalid
     #[error("Invalid configuration value for {field}: {reason}")]
-    InvalidValue { field: String, reason: String },
+    InvalidValue {
+        /// The field name that has an invalid value
+        field: String,
+        /// The reason why the value is invalid
+        reason: String,
+    },
 
+    /// Environment variable error during configuration loading
     #[error("Environment variable error: {0}")]
     EnvError(String),
 }
@@ -73,45 +83,67 @@ pub enum ConfigError {
 /// Authentication and authorization errors
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
+    /// JWT token is invalid or malformed
     #[error("Invalid JWT token: {0}")]
     InvalidToken(String),
 
+    /// JWT token has expired
     #[error("Token expired at {0}")]
     TokenExpired(String),
 
+    /// JWT token is not yet valid (nbf claim is in the future)
     #[error("Token not yet valid (nbf claim)")]
     TokenNotYetValid,
 
+    /// JWT signature verification failed
     #[error("Invalid token signature")]
     InvalidSignature,
 
+    /// Required claim is missing from JWT token
     #[error("Missing required claim: {0}")]
     MissingClaim(String),
 
+    /// JWT issuer does not match expected value
     #[error("Invalid issuer: expected {expected}, got {actual}")]
-    InvalidIssuer { expected: String, actual: String },
+    InvalidIssuer {
+        /// The expected issuer value
+        expected: String,
+        /// The actual issuer value from the token
+        actual: String,
+    },
 
+    /// JWT audience does not include required value
     #[error("Invalid audience: token does not contain required audience 'xzepr-mcp'")]
     InvalidAudience,
 
+    /// Authorization header is missing or malformed
     #[error("Missing or invalid authorization header")]
     MissingAuthHeader,
 
+    /// User lacks required scope/permission
     #[error("Insufficient permissions: required scope '{required}' not found")]
-    InsufficientPermissions { required: String },
+    InsufficientPermissions {
+        /// The required scope that was not found
+        required: String,
+    },
 
+    /// Failed to fetch JWKS from OIDC provider
     #[error("JWKS fetch failed: {0}")]
     JwksFetchFailed(String),
 
+    /// Key ID from JWT header not found in JWKS
     #[error("Key ID (kid) not found in JWKS: {0}")]
     KeyIdNotFound(String),
 
+    /// Failed to decode public key from JWKS
     #[error("Failed to decode public key: {0}")]
     KeyDecodeFailed(String),
 
+    /// Session not found or has expired
     #[error("Session not found or expired")]
     SessionNotFound,
 
+    /// Session validation failed
     #[error("Session validation failed: {0}")]
     SessionValidationFailed(String),
 }
@@ -119,61 +151,115 @@ pub enum AuthError {
 /// Input validation errors
 #[derive(Debug, thiserror::Error)]
 pub enum ValidationError {
+    /// ULID format is invalid
     #[error("Invalid ULID format: {0}")]
     InvalidUlid(String),
 
+    /// UUID format is invalid
     #[error("Invalid UUID format: {0}")]
     InvalidUuid(String),
 
+    /// Semantic version format is invalid
     #[error("Invalid semver format: {0}")]
     InvalidSemver(String),
 
+    /// Field validation failed
     #[error("Field '{field}' validation failed: {reason}")]
-    FieldValidation { field: String, reason: String },
+    FieldValidation {
+        /// The field name that failed validation
+        field: String,
+        /// The reason for validation failure
+        reason: String,
+    },
 
+    /// Request payload exceeds size limit
     #[error("Payload too large: {size} bytes exceeds maximum of {max} bytes")]
-    PayloadTooLarge { size: usize, max: usize },
+    PayloadTooLarge {
+        /// Actual size of the payload in bytes
+        size: usize,
+        /// Maximum allowed size in bytes
+        max: usize,
+    },
 
+    /// JSON nesting depth exceeds limit
     #[error("JSON nesting too deep: {depth} exceeds maximum of {max}")]
-    JsonTooDeep { depth: usize, max: usize },
+    JsonTooDeep {
+        /// Actual nesting depth
+        depth: usize,
+        /// Maximum allowed nesting depth
+        max: usize,
+    },
 
+    /// Potential injection attack detected
     #[error("Potential injection detected in field '{field}': {reason}")]
-    PotentialInjection { field: String, reason: String },
+    PotentialInjection {
+        /// The field where injection was detected
+        field: String,
+        /// Description of the detected injection pattern
+        reason: String,
+    },
 
+    /// Query parameter validation failed
     #[error("Invalid query parameter '{param}': {reason}")]
-    InvalidQueryParam { param: String, reason: String },
+    InvalidQueryParam {
+        /// The parameter name that failed validation
+        param: String,
+        /// The reason for validation failure
+        reason: String,
+    },
 
+    /// JSON schema validation failed
     #[error("Schema validation failed: {0}")]
     SchemaValidation(String),
 
+    /// Required field is missing from input
     #[error("Required field missing: {0}")]
     RequiredFieldMissing(String),
 
+    /// Enum field has invalid value
     #[error("Invalid enum value for '{field}': {value}")]
-    InvalidEnumValue { field: String, value: String },
+    InvalidEnumValue {
+        /// The field name with invalid enum value
+        field: String,
+        /// The invalid value that was provided
+        value: String,
+    },
 }
 
 /// HTTP client errors
 #[derive(Debug, thiserror::Error)]
 pub enum HttpClientError {
+    /// HTTP request failed
     #[error("Request failed: {0}")]
     RequestFailed(String),
 
+    /// Failed to establish connection
     #[error("Connection failed: {0}")]
     ConnectionFailed(String),
 
+    /// Request timed out
     #[error("Request timeout after {timeout_ms}ms")]
-    Timeout { timeout_ms: u64 },
+    Timeout {
+        /// Timeout duration in milliseconds
+        timeout_ms: u64,
+    },
 
+    /// Maximum retry attempts exceeded
     #[error("Too many retries: {attempts} attempts failed")]
-    TooManyRetries { attempts: u32 },
+    TooManyRetries {
+        /// Number of failed attempts
+        attempts: u32,
+    },
 
+    /// URL is invalid or malformed
     #[error("Invalid URL: {0}")]
     InvalidUrl(String),
 
+    /// Failed to parse response body
     #[error("Response parsing failed: {0}")]
     ResponseParseFailed(String),
 
+    /// Circuit breaker is open due to repeated failures
     #[error("Circuit breaker open: service unavailable")]
     CircuitBreakerOpen,
 }
@@ -181,33 +267,56 @@ pub enum HttpClientError {
 /// XZepr API-specific errors
 #[derive(Debug, thiserror::Error)]
 pub enum XzeprApiError {
+    /// API request failed with HTTP error status
     #[error("API request failed with status {status}: {message}")]
-    RequestFailed { status: u16, message: String },
+    RequestFailed {
+        /// HTTP status code
+        status: u16,
+        /// Error message from API
+        message: String,
+    },
 
+    /// Requested resource was not found
     #[error("Resource not found: {resource_type} with ID {id}")]
-    NotFound { resource_type: String, id: String },
+    NotFound {
+        /// Type of resource that was not found
+        resource_type: String,
+        /// ID of the resource that was not found
+        id: String,
+    },
 
+    /// Resource conflict (e.g., duplicate)
     #[error("Conflict: {0}")]
     Conflict(String),
 
+    /// Bad request parameters
     #[error("Bad request: {0}")]
     BadRequest(String),
 
+    /// Authentication required or failed
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
 
+    /// Access denied to resource
     #[error("Forbidden: {0}")]
     Forbidden(String),
 
+    /// Internal server error from XZepr API
     #[error("Internal server error: {0}")]
     InternalServerError(String),
 
+    /// XZepr service is temporarily unavailable
     #[error("Service unavailable: {0}")]
     ServiceUnavailable(String),
 }
 
 /// Result type alias for XZepr MCP operations
 pub type Result<T> = std::result::Result<T, Error>;
+
+/// Backward-compatible alias for older test suites and external code that
+/// expect `McpError` in the `xzepr_mcp::error` module. This preserves the
+/// previous import path without changing the main `Error` enum name.
+pub type McpError = Error;
 
 /// Extension trait for adding context to errors
 pub trait ErrorContext<T> {
@@ -399,14 +508,14 @@ mod tests {
     #[test]
     fn test_error_category() {
         assert_eq!(
-            Error::Auth(AuthError::InvalidToken("".to_string())).category(),
+            Error::Auth(AuthError::InvalidToken(String::new())).category(),
             "auth"
         );
         assert_eq!(
-            Error::Validation(ValidationError::InvalidUlid("".to_string())).category(),
+            Error::Validation(ValidationError::InvalidUlid(String::new())).category(),
             "validation"
         );
-        assert_eq!(Error::RateLimit("".to_string()).category(), "rate_limit");
+        assert_eq!(Error::RateLimit(String::new()).category(), "rate_limit");
     }
 
     #[test]

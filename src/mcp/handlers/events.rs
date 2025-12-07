@@ -74,11 +74,12 @@ pub async fn handle_fetch_event(
     validate_scope(claims, "xzepr:read")?;
 
     // Validate input
-    let validation_result = input_validator.validate_input(&json!({
-        "event_id": event_id
-    }));
-
-    if let Err(e) = validation_result {
+    if let Err(e) = input_validator
+        .validate_input_async(&json!({
+            "event_id": event_id
+        }))
+        .await
+    {
         let duration = start.elapsed().as_millis() as u64;
         audit_log_tool_call(
             &claims.sub,
@@ -206,9 +207,7 @@ pub async fn handle_create_event(
     }
 
     // Validate input
-    let validation_result = input_validator.validate_input(&event_payload);
-
-    if let Err(e) = validation_result {
+    if let Err(e) = input_validator.validate_input_async(&event_payload).await {
         let duration = start.elapsed().as_millis() as u64;
         audit_log_tool_call(
             &claims.sub,
@@ -350,9 +349,7 @@ pub async fn handle_search_events(
     }
 
     // Validate input
-    let validation_result = input_validator.validate_input(&query);
-
-    if let Err(e) = validation_result {
+    if let Err(e) = input_validator.validate_input_async(&query).await {
         let duration = start.elapsed().as_millis() as u64;
         audit_log_tool_call(
             &claims.sub,
@@ -472,7 +469,7 @@ mod tests {
     fn create_test_validator() -> Arc<InputValidator> {
         let settings = Settings::default();
         let rules = ValidationRules::new(&settings.security);
-        Arc::new(InputValidator::new(rules))
+        Arc::new(InputValidator::new_with_rules(rules))
     }
 
     #[tokio::test]

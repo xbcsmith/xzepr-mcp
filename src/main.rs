@@ -23,7 +23,7 @@
 use clap::Parser;
 use std::path::PathBuf;
 use tracing::{error, info};
-use xzepr_mcp::config::Settings;
+use xzepr_mcp::config::{SecurityCheck, Settings};
 
 /// XZepr MCP Server - Model Context Protocol adapter for XZepr Event Tracking
 #[derive(Parser, Debug)]
@@ -308,15 +308,21 @@ fn display_config_summary(settings: &Settings) {
     info!("  Max JSON Depth: {}", settings.security.max_json_depth);
     info!(
         "  SQL Injection Detection: {}",
-        settings.security.enable_sql_injection_detection
+        settings
+            .security
+            .detection
+            .is_enabled(SecurityCheck::SqlInjection)
     );
     info!(
         "  XSS Detection: {}",
-        settings.security.enable_xss_detection
+        settings.security.detection.is_enabled(SecurityCheck::Xss)
     );
     info!(
         "  Path Traversal Detection: {}",
-        settings.security.enable_path_traversal_detection
+        settings
+            .security
+            .detection
+            .is_enabled(SecurityCheck::PathTraversal)
     );
     info!("=============================");
 }

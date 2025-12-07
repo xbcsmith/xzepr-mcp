@@ -7,7 +7,7 @@ server:
   port: 8080
   request_timeout_secs: 30
   shutdown_timeout_secs: 10
-  max_payload_size: 65536  # 64KB
+  max_payload_size: 65536 # 64KB
   enable_cors: true
   cors_origins:
     - "https://app.example.com"
@@ -27,11 +27,11 @@ auth:
   oidc_provider_url: "https://keycloak.example.com/realms/xzepr"
   jwt_issuer: "https://keycloak.example.com/realms/xzepr"
   jwt_audience: "xzepr-mcp"
-  jwks_cache_ttl_secs: 3600  # 1 hour
-  jwks_refresh_interval_secs: 300  # 5 minutes
+  jwks_cache_ttl_secs: 3600 # 1 hour
+  jwks_refresh_interval_secs: 300 # 5 minutes
   enable_jwt_validation: true
-  session_timeout_secs: 3600  # 1 hour
-  session_idle_timeout_secs: 1800  # 30 minutes
+  session_timeout_secs: 3600 # 1 hour
+  session_idle_timeout_secs: 1800 # 30 minutes
   enable_session_binding: true
 
 rate_limit:
@@ -56,7 +56,12 @@ observability:
 
 security:
   max_json_depth: 32
-  enable_sql_injection_detection: true
-  enable_xss_detection: true
-  enable_path_traversal_detection: true
+  max_json_keys: 1024
+  max_array_len: 10000
+  max_string_len: 1048576
+  detection:
+    sql_injection: true
+    xss_detection: true
+    path_traversal_detection: true
+    ssrf_detection: true
   query_param_allow_regex: "^[a-zA-Z0-9_\\-\\.]+$"
